@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
+import "./App.css";
 
 function App() {
   const [loans, setLoans] = useState([]);
@@ -8,6 +9,7 @@ function App() {
     amount: "",
     interest_rate: "",
     loan_type: "BORROW",
+    interest_period: "YEARLY",
   });
 
   const fetchLoans = async () => {
@@ -37,59 +39,202 @@ function App() {
         amount: "",
         interest_rate: "",
         loan_type: "BORROW",
+        interest_period: "YEARLY",
       });
     } catch (err) {
       console.error("Failed to create loan", err);
     }
   };
 
+  // Separate loans by type
+  const borrowLoans = loans.filter((loan) => loan.loan_type === "BORROW");
+  const lendLoans = loans.filter((loan) => loan.loan_type === "LEND");
+
+  const getInterestAmount = (loan) => {
+    if (!loan) return 0;
+    const total = Number(loan.total_amount ?? 0);
+    const principal = Number(loan.amount ?? 0);
+    return total - principal;
+  };
+
+  const formatPeriodLabel = (period) => {
+    switch (period) {
+      case "DAILY":
+        return "per day";
+      case "WEEKLY":
+        return "per week";
+      case "MONTHLY":
+        return "per month";
+      case "YEARLY":
+        return "per year";
+      default:
+        return period?.toLowerCase() || "";
+    }
+  };
+
   return (
-    <div style={{ padding: "30px" }}>
-      <h1>Finance Manager</h1>
+    <div className="App">
+      <header className="App-header">
+        <h1>Finance Manager</h1>
 
-      <h3>Add Loan</h3>
-      <form onSubmit={handleSubmit}>
-        <input
-          placeholder="Name"
-          value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
-        />
+        <h3>Add Loan</h3>
+        <form onSubmit={handleSubmit} className="App-form">
+          <input
+            className="App-input"
+            placeholder="Name"
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            autoComplete="off"
+          />
 
-        <input
-          placeholder="Amount"
-          type="number"
-          value={form.amount}
-          onChange={(e) => setForm({ ...form, amount: e.target.value })}
-        />
+          <input
+            className="App-input"
+            placeholder="Amount"
+            type="number"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            min={0}
+            step="any"
+          />
 
-        <input
-          placeholder="Interest %"
-          type="number"
-          value={form.interest_rate}
-          onChange={(e) =>
-            setForm({ ...form, interest_rate: e.target.value })
-          }
-        />
+          <input
+            className="App-input"
+            placeholder="Interest %"
+            type="number"
+            value={form.interest_rate}
+            onChange={(e) =>
+              setForm({ ...form, interest_rate: e.target.value })
+            }
+            min={0}
+            step="any"
+          />
 
-        <select
-          value={form.loan_type}
-          onChange={(e) => setForm({ ...form, loan_type: e.target.value })}
-        >
-          <option value="BORROW">Borrow</option>
-          <option value="LEND">Lend</option>
-        </select>
+          <select
+            className="App-input"
+            value={form.interest_period}
+            onChange={(e) =>
+              setForm({ ...form, interest_period: e.target.value })
+            }
+          >
+            <option value="DAILY">Daily</option>
+            <option value="WEEKLY">Weekly</option>
+            <option value="MONTHLY">Monthly</option>
+            <option value="YEARLY">Yearly</option>
+          </select>
 
-        <button type="submit">Add</button>
-      </form>
+          <select
+            className="App-input"
+            value={form.loan_type}
+            onChange={(e) => setForm({ ...form, loan_type: e.target.value })}
+          >
+            <option value="BORROW">Borrow</option>
+            <option value="LEND">Lend</option>
+          </select>
 
-      <h3>Loan List</h3>
-      <ul>
-        {loans.map((loan) => (
-          <li key={loan.id}>
-            {loan.name} - {loan.loan_type} - ₹{loan.total_amount}
-          </li>
-        ))}
-      </ul>
+          <button className="App-link" type="submit">
+            Add
+          </button>
+        </form>
+
+        <div className="loan-lists-container">
+          <div className="borrow-list">
+            <h3>Borrowed Loans</h3>
+            <ul>
+              {borrowLoans.length === 0 && <li>No borrowed loans</li>}
+              {borrowLoans.map((loan) => (
+                <li
+                  key={loan.id}
+                  style={{
+                    background: "#fef3c7",
+                  }}
+                >
+                  <div className="loan-card">
+                    <div className="loan-title-row">
+                      <span className="loan-type loan-type--borrow">Borrow</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Name:</span>
+                      <span className="loan-value loan-name">{loan.name}</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Actual amount:</span>
+                      <span className="loan-value">₹{loan.amount}</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Interest rate:</span>
+                      <span className="loan-value">
+                        {loan.interest_rate}%
+                      </span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Time period:</span>
+                      <span className="loan-value">
+                        {loan.interest_period} {formatPeriodLabel(loan.interest_period)}
+                      </span>
+                    </div>
+                    <div className="loan-meta-row loan-meta-row--highlight">
+                      <span className="loan-label">
+                        Interest amount for this period:
+                      </span>
+                      <span className="loan-value">
+                        ₹{getInterestAmount(loan)}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="lend-list">
+            <h3>Lent Loans</h3>
+            <ul>
+              {lendLoans.length === 0 && <li>No lent loans</li>}
+              {lendLoans.map((loan) => (
+                <li
+                  key={loan.id}
+                  style={{
+                    background: "#cffafe",
+                  }}
+                >
+                  <div className="loan-card">
+                    <div className="loan-title-row">
+                      <span className="loan-type loan-type--lend">Lend</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Name:</span>
+                      <span className="loan-value loan-name">{loan.name}</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Actual amount:</span>
+                      <span className="loan-value">₹{loan.amount}</span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Interest rate:</span>
+                      <span className="loan-value">
+                        {loan.interest_rate}%
+                      </span>
+                    </div>
+                    <div className="loan-meta-row">
+                      <span className="loan-label">Time period:</span>
+                      <span className="loan-value">
+                        {loan.interest_period} {formatPeriodLabel(loan.interest_period)}
+                      </span>
+                    </div>
+                    <div className="loan-meta-row loan-meta-row--highlight">
+                      <span className="loan-label">
+                        Interest amount for this period:
+                      </span>
+                      <span className="loan-value">
+                        ₹{getInterestAmount(loan)}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </header>
     </div>
   );
 }
