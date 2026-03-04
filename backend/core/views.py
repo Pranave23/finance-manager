@@ -7,7 +7,6 @@ from rest_framework.views import APIView
 
 from .models import Loan
 
-
 class LoanSerializer(ModelSerializer):
     class Meta:
         model = Loan
@@ -35,6 +34,7 @@ class LoanCreateView(APIView):
             interest_rate=rate,
             total_amount=total,
             loan_type=serializer.validated_data["loan_type"],
+            interest_period=serializer.validated_data.get("interest_period", Loan.YEARLY),
         )
         return Response(LoanSerializer(loan).data, status=status.HTTP_201_CREATED)
 
