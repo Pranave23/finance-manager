@@ -44,3 +44,16 @@ class LoanListView(APIView):
         loans = Loan.objects.all()
         serializer = LoanSerializer(loans, many=True)
         return Response(serializer.data)
+
+
+class LoanDeleteView(APIView):
+    def delete(self, request, pk):
+        try:
+            loan = Loan.objects.get(pk=pk)
+        except Loan.DoesNotExist:
+            return Response(
+                {"detail": "Loan not found."}, status=status.HTTP_404_NOT_FOUND
+            )
+
+        loan.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
