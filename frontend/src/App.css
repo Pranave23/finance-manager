@@ -178,6 +178,29 @@ li {
   color: #111827;
 }
 
+.loan-actions-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.loan-delete-button {
+  border: none;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 0.85rem;
+  padding: 6px 10px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.loan-delete-button:hover,
+.loan-delete-button:focus {
+  background: #fecaca;
+  color: #7f1d1d;
+}
+
 /* Highlight borrowed (neutral grey background via inline style) */
 li[style*="background: #fef3c7"] {
   background: #f7fafb !important;

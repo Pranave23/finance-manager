@@ -72,6 +72,20 @@ function App() {
     }
   };
 
+  const handleDelete = async (id) => {
+    const confirmDelete = window.confirm(
+      "Are you sure you want to delete this loan?"
+    );
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/loan/delete/${id}/`);
+      await fetchLoans();
+    } catch (err) {
+      console.error("Failed to delete loan", err);
+    }
+  };
+
   return (
     <div className="App">
       <header className="App-header">
@@ -180,6 +194,15 @@ function App() {
                         ₹{getInterestAmount(loan)}
                       </span>
                     </div>
+                    <div className="loan-actions-row">
+                      <button
+                        type="button"
+                        className="loan-delete-button"
+                        onClick={() => handleDelete(loan.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -227,6 +250,15 @@ function App() {
                       <span className="loan-value">
                         ₹{getInterestAmount(loan)}
                       </span>
+                    </div>
+                    <div className="loan-actions-row">
+                      <button
+                        type="button"
+                        className="loan-delete-button"
+                        onClick={() => handleDelete(loan.id)}
+                      >
+                        Delete
+                      </button>
                     </div>
                   </div>
                 </li>
