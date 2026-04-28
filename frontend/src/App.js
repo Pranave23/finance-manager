@@ -12,6 +12,8 @@ import "./App.css";
 
 const ACCESS_TOKEN_KEY = "finance_manager_access_token";
 const REFRESH_TOKEN_KEY = "finance_manager_refresh_token";
+const ACCESS_FALLBACK_KEY = "access";
+const REFRESH_FALLBACK_KEY = "refresh";
 
 function parseListPayload(payload) {
   const data = payload?.data;
@@ -70,6 +72,14 @@ function getApiErrorMessage(err, fallbackMessage) {
   }
 
   return fallbackMessage;
+}
+
+function getStoredAccessToken() {
+  return (
+    localStorage.getItem(ACCESS_FALLBACK_KEY) ||
+    localStorage.getItem(ACCESS_TOKEN_KEY) ||
+    ""
+  );
 }
 
 function AuthLayout({ subtitle, children, footer }) {
@@ -272,133 +282,8 @@ function RegisterPage({ api }) {
   );
 }
 
-function DashboardPage({ api, accessToken, onLogout }) {
+function DashboardPage({ onLogout }) {
   const navigate = useNavigate();
-  const authHeaders = useMemo(
-    () => ({
-      Authorization: `Bearer ${accessToken}`,
-    }),
-    [accessToken]
-  );
-  const [contacts, setContacts] = useState([]);
-  const [loans, setLoans] = useState([]);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [form, setForm] = useState({
-    contact: "",
-    name: "",
-    phone_number: "",
-    aadhaar_number: "",
-    principal_amount: "",
-    interest_rate: "",
-    direction: "borrowing",
-    interest_period: "monthly",
-    start_date: new Date().toISOString().split("T")[0],
-    notes: "",
-  });
-
-  const fetchContacts = useCallback(async () => {
-    try {
-      const res = await api.get("/contacts/", { headers: authHeaders });
-      setContacts(parseListPayload(res.data));
-    } catch (err) {
-      setErrorMessage(getApiErrorMessage(err, "Failed to fetch contacts."));
-    }
-  }, [api, authHeaders]);
-
-  const fetchLoans = useCallback(async () => {
-    try {
-      const res = await api.get("/loans/", { headers: authHeaders });
-      setLoans(parseListPayload(res.data));
-    } catch (err) {
-      setErrorMessage(getApiErrorMessage(err, "Failed to fetch loans."));
-    }
-  }, [api, authHeaders]);
-
-  useEffect(() => {
-    fetchContacts();
-    fetchLoans();
-  }, [fetchContacts, fetchLoans]);
-
-  const resolveContactId = async () => {
-    if (form.contact) {
-      return form.contact;
-    }
-
-    const res = await api.post(
-      "/contacts/",
-      {
-        name: form.name,
-        phone_number: form.phone_number,
-        aadhaar_number: form.aadhaar_number,
-        type: form.direction === "borrowing" ? "lender" : "borrower",
-      },
-      { headers: authHeaders }
-    );
-
-    const contact = res.data?.data || res.data;
-    return contact?.id;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setErrorMessage("");
-
-    try {
-      const contactId = await resolveContactId();
-      await api.post(
-        "/loans/",
-        {
-          contact: contactId,
-          direction: form.direction,
-          principal_amount: Number(form.principal_amount),
-          interest_rate: Number(form.interest_rate),
-          interest_period: form.interest_period,
-          start_date: form.start_date,
-          notes: form.notes,
-        },
-        { headers: authHeaders }
-      );
-
-      await fetchContacts();
-      await fetchLoans();
-      setForm({
-        contact: "",
-        name: "",
-        phone_number: "",
-        aadhaar_number: "",
-        principal_amount: "",
-        interest_rate: "",
-        direction: "borrowing",
-        interest_period: "monthly",
-        start_date: new Date().toISOString().split("T")[0],
-        notes: "",
-      });
-    } catch (err) {
-      setErrorMessage(getApiErrorMessage(err, "Failed to create loan."));
-    }
-  };
-
-  const borrowLoans = loans.filter((loan) => loan.direction === "borrowing");
-  const lendLoans = loans.filter((loan) => loan.direction === "lending");
-
-  const getInterestAmount = (loan) => {
-    const principal = Number(loan.principal_amount ?? 0);
-    const rate = Number(loan.interest_rate ?? 0);
-    return ((principal * rate) / 100).toFixed(2);
-  };
-
-  const formatPeriodLabel = (period) => {
-    switch (period) {
-      case "daily":
-        return "per day";
-      case "weekly":
-        return "per week";
-      case "monthly":
-        return "per month";
-      default:
-        return period || "";
-    }
-  };
 
   return (
     <div className="dashboard-page">
@@ -418,187 +303,292 @@ function DashboardPage({ api, accessToken, onLogout }) {
           Logout
         </button>
       </div>
+      <section className="dashboard-cards">
+        <button
+          type="button"
+          className="dashboard-card dashboard-card--borrow"
+          onClick={() => navigate("/borrow")}
+        >
+          <span className="dashboard-card__icon">↓</span>
+          <span className="dashboard-card__title">Borrow</span>
+          <span className="dashboard-card__subtitle">Track money you borrowed</span>
+        </button>
 
-      {errorMessage && <p className="auth-message">{errorMessage}</p>}
+        <button
+          type="button"
+          className="dashboard-card dashboard-card--lend"
+          onClick={() => navigate("/lend")}
+        >
+          <span className="dashboard-card__icon">↑</span>
+          <span className="dashboard-card__title">Lend</span>
+          <span className="dashboard-card__subtitle">Track money you lent out</span>
+        </button>
+      </section>
+    </div>
+  );
+}
 
-      <section className="dashboard-section">
-        <h3 className="dashboard-section-title">Add Loan</h3>
-        <form onSubmit={handleSubmit} className="dashboard-form">
-          <select
-            className="auth-input"
-            value={form.contact}
-            onChange={(e) => setForm({ ...form, contact: e.target.value })}
+function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
+  const navigate = useNavigate();
+  const [records, setRecords] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [form, setForm] = useState({
+    person_name: "",
+    amount: "",
+    due_date: "",
+    notes: "",
+    status: "Pending",
+  });
+
+  const authHeaders = useMemo(
+    () => ({
+      Authorization: `Bearer ${getStoredAccessToken()}`,
+    }),
+    []
+  );
+
+  const endpoint = `/${type}/`;
+
+  const fetchRecords = useCallback(async () => {
+    try {
+      const res = await api.get(endpoint, { headers: authHeaders });
+      setRecords(parseListPayload(res.data));
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, `Failed to fetch ${type} records.`));
+    }
+  }, [api, authHeaders, endpoint, type]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
+
+  const resetForm = () => {
+    setForm({
+      person_name: "",
+      amount: "",
+      due_date: "",
+      notes: "",
+      status: "Pending",
+    });
+    setEditingId(null);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setErrorMessage("");
+    try {
+      const payload = {
+        person_name: form.person_name,
+        amount: Number(form.amount),
+        due_date: form.due_date,
+        notes: form.notes,
+        status: form.status,
+      };
+
+      if (editingId) {
+        await api.put(`${endpoint}${editingId}/`, payload, { headers: authHeaders });
+      } else {
+        await api.post(endpoint, payload, { headers: authHeaders });
+      }
+
+      await fetchRecords();
+      resetForm();
+      setShowForm(false);
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, `Failed to save ${type} record.`));
+    }
+  };
+
+  const handleEdit = (record) => {
+    setShowForm(true);
+    setEditingId(record.id);
+    setForm({
+      person_name: record.person_name || "",
+      amount: record.amount || "",
+      due_date: record.due_date || "",
+      notes: record.notes || "",
+      status: record.status || "Pending",
+    });
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this record?")) {
+      return;
+    }
+    setErrorMessage("");
+    try {
+      await api.delete(`${endpoint}${id}/`, { headers: authHeaders });
+      await fetchRecords();
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, `Failed to delete ${type} record.`));
+    }
+  };
+
+  const totalPendingAmount = records
+    .filter((record) => String(record.status || "").toLowerCase() === "pending")
+    .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+
+  return (
+    <div className="records-page">
+      <div className="dashboard-header">
+        <div className="records-header-left">
+          <button
+            type="button"
+            className="back-button"
+            onClick={() => navigate("/dashboard")}
           >
-            <option value="">Create new contact</option>
-            {contacts.map((contact) => (
-              <option key={contact.id} value={contact.id}>
-                {contact.name}
-              </option>
-            ))}
-          </select>
+            ←
+          </button>
+          <div>
+            <h1 className="auth-title">Finance Manager</h1>
+            <h2 className="dashboard-subtitle">{title}</h2>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="auth-button auth-button--secondary dashboard-logout"
+          onClick={() => {
+            onLogout();
+            navigate("/login");
+          }}
+        >
+          Logout
+        </button>
+      </div>
 
-          {!form.contact && (
-            <>
-              <input
-                className="auth-input"
-                placeholder="Contact name"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-              />
-              <input
-                className="auth-input"
-                placeholder="Phone number"
-                value={form.phone_number}
-                onChange={(e) =>
-                  setForm({ ...form, phone_number: e.target.value })
-                }
-              />
-              <input
-                className="auth-input"
-                placeholder="Aadhaar number"
-                value={form.aadhaar_number}
-                onChange={(e) =>
-                  setForm({ ...form, aadhaar_number: e.target.value })
-                }
-              />
-            </>
-          )}
+      <div className="records-toolbar">
+        <h3 className="dashboard-section-title">{subtitle}</h3>
+        <button
+          type="button"
+          className="auth-button records-add-button"
+          onClick={() => {
+            setShowForm((current) => !current);
+            if (showForm) {
+              resetForm();
+            }
+          }}
+        >
+          + Add New
+        </button>
+      </div>
 
+      {showForm && (
+        <form onSubmit={handleSubmit} className="dashboard-form records-form">
           <input
             className="auth-input"
-            placeholder="Principal amount"
-            type="number"
-            value={form.principal_amount}
-            onChange={(e) =>
-              setForm({ ...form, principal_amount: e.target.value })
-            }
-            min={0}
-            step="any"
+            placeholder="Person name"
+            value={form.person_name}
+            onChange={(e) => setForm({ ...form, person_name: e.target.value })}
+            required
           />
           <input
             className="auth-input"
-            placeholder="Interest %"
+            placeholder="Amount"
             type="number"
-            value={form.interest_rate}
-            onChange={(e) => setForm({ ...form, interest_rate: e.target.value })}
             min={0}
             step="any"
+            value={form.amount}
+            onChange={(e) => setForm({ ...form, amount: e.target.value })}
+            required
           />
           <input
             className="auth-input"
             type="date"
-            value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+            value={form.due_date}
+            onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+            required
           />
-          <select
-            className="auth-input"
-            value={form.interest_period}
-            onChange={(e) =>
-              setForm({ ...form, interest_period: e.target.value })
-            }
-          >
-            <option value="daily">Daily</option>
-            <option value="weekly">Weekly</option>
-            <option value="monthly">Monthly</option>
-          </select>
-          <select
-            className="auth-input"
-            value={form.direction}
-            onChange={(e) => setForm({ ...form, direction: e.target.value })}
-          >
-            <option value="borrowing">Borrow</option>
-            <option value="lending">Lend</option>
-          </select>
-          <input
-            className="auth-input"
-            placeholder="Notes"
+          <textarea
+            className="auth-input records-textarea"
+            placeholder="Notes or reason"
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
           />
-
-          <button className="auth-button" type="submit">
-            Add Loan
-          </button>
+          <select
+            className="auth-input"
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value })}
+          >
+            <option value="Pending">Pending</option>
+            <option value="Returned">Returned</option>
+          </select>
+          <div className="records-form-actions">
+            <button className="auth-button" type="submit">
+              {editingId ? "Update" : "Submit"}
+            </button>
+            <button
+              type="button"
+              className="auth-button auth-button--secondary"
+              onClick={() => {
+                resetForm();
+                setShowForm(false);
+              }}
+            >
+              Cancel
+            </button>
+          </div>
         </form>
-      </section>
+      )}
 
-      <section className="loan-lists-container">
-        <div className="loan-column">
-          <h3 className="dashboard-section-title">Borrowed Loans</h3>
-          <ul className="loan-list">
-            {borrowLoans.length === 0 && <li className="loan-item">No borrowed loans</li>}
-            {borrowLoans.map((loan) => (
-              <li key={loan.id} className="loan-item">
-                <div className="loan-card">
-                  <div className="loan-title-row">
-                    <span className="loan-type loan-type--borrow">Borrow</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Name:</span>
-                    <span className="loan-value">{loan.contact?.name || "N/A"}</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Amount:</span>
-                    <span className="loan-value">₹{loan.principal_amount}</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Interest:</span>
-                    <span className="loan-value">{loan.interest_rate}%</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Period:</span>
-                    <span className="loan-value">
-                      {loan.interest_period} {formatPeriodLabel(loan.interest_period)}
-                    </span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Interest amount:</span>
-                    <span className="loan-value">₹{getInterestAmount(loan)}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {errorMessage && <p className="auth-message">{errorMessage}</p>}
 
-        <div className="loan-column">
-          <h3 className="dashboard-section-title">Lent Loans</h3>
-          <ul className="loan-list">
-            {lendLoans.length === 0 && <li className="loan-item">No lent loans</li>}
-            {lendLoans.map((loan) => (
-              <li key={loan.id} className="loan-item">
-                <div className="loan-card">
-                  <div className="loan-title-row">
-                    <span className="loan-type loan-type--lend">Lend</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Name:</span>
-                    <span className="loan-value">{loan.contact?.name || "N/A"}</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Amount:</span>
-                    <span className="loan-value">₹{loan.principal_amount}</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Interest:</span>
-                    <span className="loan-value">{loan.interest_rate}%</span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Period:</span>
-                    <span className="loan-value">
-                      {loan.interest_period} {formatPeriodLabel(loan.interest_period)}
-                    </span>
-                  </div>
-                  <div className="loan-meta-row">
-                    <span className="loan-label">Interest amount:</span>
-                    <span className="loan-value">₹{getInterestAmount(loan)}</span>
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <div className="records-total">
+        {totalLabel}: ₹{totalPendingAmount.toFixed(2)}
+      </div>
+
+      <div className="records-list">
+        {records.length === 0 && <p className="records-empty">No records found.</p>}
+        {records.map((record) => {
+          const normalizedStatus = String(record.status || "").toLowerCase();
+          const statusClass =
+            normalizedStatus === "returned"
+              ? "status-badge status-badge--returned"
+              : "status-badge status-badge--pending";
+
+          return (
+            <div key={record.id} className="record-item">
+              <div className="record-row">
+                <span className="loan-label">Person</span>
+                <span className="loan-value">{record.person_name}</span>
+              </div>
+              <div className="record-row">
+                <span className="loan-label">Amount</span>
+                <span className="loan-value">₹{record.amount}</span>
+              </div>
+              <div className="record-row">
+                <span className="loan-label">Due Date</span>
+                <span className="loan-value">{record.due_date}</span>
+              </div>
+              <div className="record-row">
+                <span className="loan-label">Notes</span>
+                <span className="loan-value">{record.notes || "-"}</span>
+              </div>
+              <div className="record-row">
+                <span className="loan-label">Status</span>
+                <span className={statusClass}>{record.status}</span>
+              </div>
+              <div className="record-actions">
+                <button
+                  type="button"
+                  className="auth-button auth-button--secondary record-action-button"
+                  onClick={() => handleEdit(record)}
+                >
+                  Edit
+                </button>
+                <button
+                  type="button"
+                  className="auth-button record-action-button record-action-button--danger"
+                  onClick={() => handleDelete(record.id)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -612,19 +602,20 @@ function App() {
     []
   );
   const [accessToken, setAccessToken] = useState(
-    () => localStorage.getItem(ACCESS_TOKEN_KEY) || ""
+    () => getStoredAccessToken()
   );
 
   const handleLogin = (access, refresh) => {
     setAccessToken(access);
     localStorage.setItem(ACCESS_TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
+    localStorage.setItem(ACCESS_FALLBACK_KEY, access);
+    localStorage.setItem(REFRESH_FALLBACK_KEY, refresh);
   };
 
   const handleLogout = () => {
     setAccessToken("");
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-    localStorage.removeItem(REFRESH_TOKEN_KEY);
+    localStorage.clear();
   };
 
   return (
@@ -649,9 +640,39 @@ function App() {
         path="/dashboard"
         element={
           accessToken ? (
-            <DashboardPage
+            <DashboardPage onLogout={handleLogout} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/borrow"
+        element={
+          accessToken ? (
+            <RecordsPage
               api={api}
-              accessToken={accessToken}
+              type="borrow"
+              title="Borrow Records"
+              subtitle="Borrow Records"
+              totalLabel="Total Borrowed (Pending)"
+              onLogout={handleLogout}
+            />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+      <Route
+        path="/lend"
+        element={
+          accessToken ? (
+            <RecordsPage
+              api={api}
+              type="lend"
+              title="Lend Records"
+              subtitle="Lend Records"
+              totalLabel="Total Lent (Pending)"
               onLogout={handleLogout}
             />
           ) : (

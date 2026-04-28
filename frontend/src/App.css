@@ -145,17 +145,80 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 24px;
+  margin: 0 -16px 24px;
+  padding: 14px 16px;
+  background: #ffffff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .dashboard-logout {
   width: auto;
-  min-width: 120px;
-  padding: 0 20px;
+  min-width: 104px;
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
 }
 
 .dashboard-section {
   margin-bottom: 28px;
+}
+
+.dashboard-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 20px;
+}
+
+.dashboard-card {
+  text-align: left;
+  border: none;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  padding: 24px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.dashboard-card:hover {
+  transform: scale(1.02);
+  box-shadow: 0 14px 26px rgba(15, 23, 42, 0.12);
+}
+
+.dashboard-card__icon {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.dashboard-card__title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #050505;
+}
+
+.dashboard-card__subtitle {
+  font-size: 14px;
+  color: #65676b;
+}
+
+.dashboard-card--borrow {
+  border-left: 5px solid #ea580c;
+}
+
+.dashboard-card--borrow .dashboard-card__icon {
+  color: #ea580c;
+}
+
+.dashboard-card--lend {
+  border-left: 5px solid #1877f2;
+}
+
+.dashboard-card--lend .dashboard-card__icon {
+  color: #1877f2;
 }
 
 .loan-lists-container {
@@ -224,11 +287,164 @@
   text-align: right;
 }
 
+.records-page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #050505;
+  font-family: Arial, Helvetica, sans-serif;
+  padding: 24px 16px 40px;
+  max-width: 780px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.records-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.records-header-left .auth-title {
+  margin-bottom: 6px;
+}
+
+.back-button {
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #111827;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+.back-button:hover {
+  background: #f9fafb;
+}
+
+.records-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.records-add-button {
+  width: auto;
+  min-width: 130px;
+  padding: 0 20px;
+}
+
+.records-form {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.04);
+}
+
+.records-textarea {
+  min-height: 84px;
+  resize: vertical;
+}
+
+.records-form-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.records-total {
+  margin: 10px 0 14px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.records-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.record-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+}
+
+.record-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status-badge--returned {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-badge--pending {
+  background: #ffedd5;
+  color: #9a3412;
+}
+
+.record-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.record-action-button {
+  min-height: 40px;
+}
+
+.record-action-button--danger {
+  background: #dc2626;
+}
+
+.records-empty {
+  margin: 0;
+  color: #6b7280;
+}
+
 @media (min-width: 768px) {
   .auth-content,
   .dashboard-page {
     padding: 32px 24px 48px;
     max-width: 640px;
+  }
+
+  .records-page {
+    padding: 32px 24px 48px;
+  }
+
+  .dashboard-header {
+    margin-left: -24px;
+    margin-right: -24px;
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+
+  .dashboard-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .loan-lists-container {
