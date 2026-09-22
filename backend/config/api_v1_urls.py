@@ -2,6 +2,8 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from apps.contacts.views import ContactViewSet
+from apps.loans.borrow_views import BorrowViewSet as EnhancedBorrowViewSet
+from apps.loans.borrow_views import LenderViewSet
 from apps.loans.views import BorrowViewSet, LendViewSet, LoanViewSet
 from apps.payments.views import (
     PaymentViewSet,
@@ -20,7 +22,9 @@ router = DefaultRouter()
 router.register(r"contacts", ContactViewSet, basename="contact")
 router.register(r"loans", LoanViewSet, basename="loan")
 router.register(r"payments", PaymentViewSet, basename="payment")
-router.register(r"borrow", BorrowViewSet, basename="borrow")
+router.register(r"lenders", LenderViewSet, basename="lender")
+router.register(r"borrow-records", BorrowViewSet, basename="borrow-record")
+router.register(r"borrow", EnhancedBorrowViewSet, basename="borrow")
 router.register(r"lend", LendViewSet, basename="lend")
 
 urlpatterns = [

@@ -7,6 +7,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import "./App.css";
+import BorrowPortal from "./BorrowPortal";
 
 const ACCESS_TOKEN_KEY = "fm_access_token";
 const REFRESH_TOKEN_KEY = "fm_refresh_token";
@@ -193,7 +194,7 @@ function AuthPage({ api, onLogin }) {
   );
 }
 
-function PortalLayout({ userMobile, activeTab, onLogout, children }) {
+export function PortalLayout({ userMobile, activeTab, onLogout, children }) {
   const navigate = useNavigate();
 
   return (
@@ -597,12 +598,9 @@ function App() {
         path="/borrow"
         element={
           accessToken ? (
-            <RecordPortal
+            <BorrowPortal
               api={api}
-              type="borrow"
-              title="Borrow Portal"
-              subtitle="Track money you have borrowed from others"
-              totalLabel="Total Borrowed (Pending)"
+              PortalLayout={PortalLayout}
               userMobile={userMobile}
               onLogout={handleLogout}
             />

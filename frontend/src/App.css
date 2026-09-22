@@ -566,3 +566,363 @@ body {
   display: block;
   margin-bottom: 12px;
 }
+
+/* ================= Borrow Module ================= */
+.borrow-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.summary-card__label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+}
+
+.summary-card__value {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fbbf24;
+}
+
+.summary-card__value--warn {
+  color: #fb923c;
+}
+
+.summary-card__value--good {
+  color: #34d399;
+}
+
+.summary-card__value--danger {
+  color: #f87171;
+}
+
+.borrow-table-wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  overflow-x: auto;
+  margin-bottom: 24px;
+}
+
+.borrow-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1100px;
+}
+
+.borrow-table th,
+.borrow-table td {
+  padding: 12px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.borrow-table th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.borrow-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.borrow-row:hover {
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.borrow-row--overdue {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.borrow-row--overdue td:nth-child(6) {
+  color: #fca5a5;
+  font-weight: 700;
+}
+
+.borrow-row--expanded {
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.expand-cell {
+  width: 28px;
+  color: var(--text-muted);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.badge-paid {
+  background: rgba(16, 185, 129, 0.2);
+  color: #6ee7b7;
+}
+
+.badge-partial {
+  background: rgba(251, 191, 36, 0.2);
+  color: #fcd34d;
+}
+
+.badge-unpaid {
+  background: rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+.overpaid-hint {
+  display: block;
+  font-size: 10px;
+  color: #6ee7b7;
+  margin-top: 2px;
+}
+
+.row-actions {
+  display: flex;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.table-btn {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.5);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.table-btn--danger {
+  color: #fca5a5;
+}
+
+.borrow-detail-row td {
+  padding: 0;
+  border-bottom: 1px solid var(--card-border);
+}
+
+.borrow-detail-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  padding: 16px 18px 20px;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.detail-section h4 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.detail-section--wide {
+  grid-column: 1 / -1;
+}
+
+.breakdown-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.payment-ledger {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.payment-ledger th,
+.payment-ledger td {
+  padding: 8px;
+  border-bottom: 1px solid var(--card-border);
+  text-align: left;
+}
+
+.muted-text {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.payment-form-card {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.portal-container:has(.borrow-table-wrap) {
+  max-width: 1400px;
+}
+
+/* Enhanced Borrow Module Elements */
+.payment-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.remaining-badge {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.table-btn--pay {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: #10b981;
+  color: #34d399;
+}
+
+.table-btn--pay:hover {
+  background: #10b981;
+  color: #ffffff;
+}
+
+.mini-pay-btn {
+  padding: 4px 10px;
+  background: var(--primary-color);
+  border: none;
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mini-pay-btn:hover {
+  background: var(--primary-hover);
+}
+
+.ledger-del-btn {
+  padding: 2px 6px;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.ledger-del-btn:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.open-ended-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-muted);
+}
+
+.interest-info-pill {
+  font-size: 12px;
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.status-badge-container {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-start;
+}
+
+.overdue-warning-pill {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  background: rgba(239, 68, 68, 0.25);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.detail-kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 12px;
+}
+
+.detail-label {
+  color: var(--text-muted);
+}
+
+.detail-val {
+  color: var(--text-main);
+  text-align: right;
+}
+
+.ledger-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.radio-group {
+  display: flex;
+  gap: 16px;
+  margin-top: 4px;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-main);
+}
+
+.due-date-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
