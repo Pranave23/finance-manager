@@ -35,3 +35,25 @@ class LoanDetailSerializer(LoanSerializer):
 
     class Meta(LoanSerializer.Meta):
         fields = LoanSerializer.Meta.fields + ("payment_schedules",)
+
+
+from apps.loans.models import BorrowLend
+
+
+class BorrowLendSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BorrowLend
+        fields = (
+            "id",
+            "person_name",
+            "phone_number",
+            "amount",
+            "due_date",
+            "notes",
+            "status",
+            "type",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("id", "type", "created_at", "updated_at")
+

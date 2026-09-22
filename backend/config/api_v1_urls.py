@@ -2,7 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from apps.contacts.views import ContactViewSet
-from apps.loans.views import LoanViewSet
+from apps.loans.views import BorrowViewSet, LendViewSet, LoanViewSet
 from apps.payments.views import (
     PaymentViewSet,
     ScheduleCheckOverdueView,
@@ -12,16 +12,20 @@ from apps.payments.views import (
 from core.jwt_views import (
     EnvelopeTokenObtainPairView,
     EnvelopeTokenRefreshView,
-    RegisterUserView,
+    MobileLoginView,
+    MobileRegisterView,
 )
 
 router = DefaultRouter()
 router.register(r"contacts", ContactViewSet, basename="contact")
 router.register(r"loans", LoanViewSet, basename="loan")
 router.register(r"payments", PaymentViewSet, basename="payment")
+router.register(r"borrow", BorrowViewSet, basename="borrow")
+router.register(r"lend", LendViewSet, basename="lend")
 
 urlpatterns = [
-    path("auth/register/", RegisterUserView.as_view(), name="auth_register"),
+    path("auth/register/", MobileRegisterView.as_view(), name="auth_register"),
+    path("auth/login/", MobileLoginView.as_view(), name="auth_login"),
     path(
         "auth/token/",
         EnvelopeTokenObtainPairView.as_view(),

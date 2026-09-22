@@ -1,31 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import {
-  Link,
   Navigate,
   Route,
   Routes,
-  useLocation,
   useNavigate,
 } from "react-router-dom";
 import "./App.css";
 
-const ACCESS_TOKEN_KEY = "finance_manager_access_token";
-const REFRESH_TOKEN_KEY = "finance_manager_refresh_token";
-const ACCESS_FALLBACK_KEY = "access";
-const REFRESH_FALLBACK_KEY = "refresh";
+const ACCESS_TOKEN_KEY = "fm_access_token";
+const REFRESH_TOKEN_KEY = "fm_refresh_token";
+const USER_MOBILE_KEY = "fm_user_mobile";
 
 function parseListPayload(payload) {
   const data = payload?.data;
-  if (!data) {
-    return [];
-  }
-  if (Array.isArray(data)) {
-    return data;
-  }
-  if (Array.isArray(data.results)) {
-    return data.results;
-  }
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data.results)) return data.results;
   return [];
 }
 
@@ -40,302 +31,223 @@ function getApiErrorMessage(err, fallbackMessage) {
         .flatMap((item) => formatErrors(item, parentKey))
         .filter(Boolean);
     }
-
     if (value && typeof value === "object") {
       return Object.entries(value).flatMap(([key, nestedValue]) =>
         formatErrors(nestedValue, parentKey ? `${parentKey}.${key}` : key)
       );
     }
-
-    if (value === null || value === undefined || value === "") {
-      return [];
-    }
-
+    if (value === null || value === undefined || value === "") return [];
     return [parentKey ? `${parentKey}: ${String(value)}` : String(value)];
   };
 
   const errorDetails = formatErrors(errors);
-
   if (typeof message === "string" && message.trim()) {
     return errorDetails.length > 0
-      ? `${message} Details: ${errorDetails.join(" | ")}`
+      ? `${message} (${errorDetails.join(" | ")})`
       : message;
   }
-
-  const detail = responseData?.detail;
-  if (typeof detail === "string" && detail.trim()) {
-    return detail;
-  }
-
   if (errorDetails.length > 0) {
-    return `${fallbackMessage} Details: ${errorDetails.join(" | ")}`;
+    return `${fallbackMessage} (${errorDetails.join(" | ")})`;
   }
-
   return fallbackMessage;
 }
 
-function getStoredAccessToken() {
-  return (
-    localStorage.getItem(ACCESS_FALLBACK_KEY) ||
-    localStorage.getItem(ACCESS_TOKEN_KEY) ||
-    ""
-  );
-}
-
-function AuthLayout({ subtitle, children, footer }) {
-  return (
-    <div className="auth-page">
-      <div className="auth-content">
-        <h1 className="auth-title">Finance Manager</h1>
-        <h2 className="auth-subtitle">{subtitle}</h2>
-        {children}
-        {footer}
-      </div>
-    </div>
-  );
-}
-
-function LoginPage({ api, onLogin }) {
+function AuthPage({ api, onLogin }) {
   const navigate = useNavigate();
-  const location = useLocation();
-  const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState(location.state?.successMessage || "");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    if (location.state?.successMessage) {
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.pathname, location.state, navigate]);
+  const [message, setMessage] = useState({ text: "", type: "" });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const res = await api.post("/auth/token/", form);
-      const tokenData = res.data?.data || res.data;
-      onLogin(tokenData?.access || "", tokenData?.refresh || "");
-      navigate("/dashboard");
-    } catch (err) {
-      setError(getApiErrorMessage(err, "Invalid username or password"));
-    } finally {
-      setLoading(false);
+    if (!mobileNumber || mobileNumber.length < 7) {
+      setMessage({
+        text: "Please enter a valid mobile number.",
+        type: "error",
+      });
+      return;
     }
-  };
-
-  return (
-    <AuthLayout
-      subtitle="Login"
-      footer={
-        <>
-          <button
-            type="button"
-            className="auth-link-button"
-            onClick={() => window.alert("Forgot password flow coming soon.")}
-          >
-            Forgot password?
-          </button>
-          <div className="auth-divider" />
-          <button
-            type="button"
-            className="auth-button auth-button--secondary"
-            onClick={() => navigate("/register")}
-          >
-            Create new account
-          </button>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit} className="auth-form">
-        <input
-          className="auth-input"
-          placeholder="Username"
-          value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
-          autoComplete="username"
-        />
-        <div className="password-field">
-          <input
-            className="auth-input password-field__input"
-            placeholder="Password"
-            type={showPassword ? "text" : "password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            autoComplete="current-password"
-          />
-          <button
-            type="button"
-            className="password-field__toggle"
-            onClick={() => setShowPassword((current) => !current)}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        <button className="auth-button" type="submit" disabled={loading}>
-          {loading ? "Logging in..." : "Log in"}
-        </button>
-        {error && <p className="auth-message">{error}</p>}
-      </form>
-    </AuthLayout>
-  );
-}
-
-function RegisterPage({ api }) {
-  const navigate = useNavigate();
-  const [form, setForm] = useState({
-    username: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-
-    if (form.password !== form.confirmPassword) {
-      setError("Passwords do not match");
+    if (!password) {
+      setMessage({
+        text: "Please enter your password.",
+        type: "error",
+      });
       return;
     }
 
     setLoading(true);
+    setMessage({ text: "", type: "" });
+    const endpoint = isSignUp ? "/auth/register/" : "/auth/login/";
+
     try {
-      await api.post("/auth/register/", {
-        username: form.username,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
+      const res = await api.post(endpoint, {
+        mobile_number: mobileNumber,
+        password,
       });
-      navigate("/login", {
-        state: { successMessage: "User created successfully. Please log in." },
-      });
+
+      const tokenData = res.data?.data;
+      if (tokenData?.access) {
+        onLogin(tokenData.access, tokenData.refresh, mobileNumber);
+        navigate("/borrow");
+      } else {
+        setMessage({
+          text: "Registration successful! You can now sign in.",
+          type: "success",
+        });
+        setTimeout(() => {
+          setIsSignUp(false);
+        }, 1000);
+      }
     } catch (err) {
-      setError(getApiErrorMessage(err, "Failed to create user"));
+      setMessage({
+        text: getApiErrorMessage(
+          err,
+          isSignUp ? "Sign up failed." : "Login failed."
+        ),
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout
-      subtitle="Create User"
-      footer={
-        <p className="auth-footer-text">
-          Already have an account? <Link to="/login">Log in</Link>
-        </p>
-      }
-    >
-      <form onSubmit={handleSubmit} className="auth-form">
-        <input
-          className="auth-input"
-          placeholder="New username"
-          value={form.username}
-          onChange={(e) => setForm({ ...form, username: e.target.value })}
-          autoComplete="username"
-        />
-        <div className="password-field">
-          <input
-            className="auth-input password-field__input"
-            placeholder="New password"
-            type={showPassword ? "text" : "password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            className="password-field__toggle"
-            onClick={() => setShowPassword((current) => !current)}
-          >
-            {showPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        <div className="password-field">
-          <input
-            className="auth-input password-field__input"
-            placeholder="Confirm password"
-            type={showConfirmPassword ? "text" : "password"}
-            value={form.confirmPassword}
-            onChange={(e) =>
-              setForm({ ...form, confirmPassword: e.target.value })
-            }
-            autoComplete="new-password"
-          />
-          <button
-            type="button"
-            className="password-field__toggle"
-            onClick={() => setShowConfirmPassword((current) => !current)}
-          >
-            {showConfirmPassword ? "Hide" : "Show"}
-          </button>
-        </div>
-        <button className="auth-button" type="submit" disabled={loading}>
-          {loading ? "Creating..." : "Create user"}
-        </button>
-        {error && <p className="auth-message">{error}</p>}
-      </form>
-    </AuthLayout>
-  );
-}
-
-function DashboardPage({ onLogout }) {
-  const navigate = useNavigate();
-
-  return (
-    <div className="dashboard-page">
-      <div className="dashboard-header">
-        <div>
+    <div className="auth-wrapper">
+      <div className="auth-card">
+        <div className="auth-header">
+          <div className="auth-logo-icon">💰</div>
           <h1 className="auth-title">Finance Manager</h1>
-          <h2 className="dashboard-subtitle">Dashboard</h2>
+          <p className="auth-subtitle">
+            {isSignUp
+              ? "Register with Mobile Number & Password"
+              : "Sign in with Mobile Number & Password"}
+          </p>
         </div>
-        <button
-          type="button"
-          className="auth-button auth-button--secondary dashboard-logout"
-          onClick={() => {
-            onLogout();
-            navigate("/login");
-          }}
-        >
-          Logout
-        </button>
-      </div>
-      <section className="dashboard-cards">
-        <button
-          type="button"
-          className="dashboard-card dashboard-card--borrow"
-          onClick={() => navigate("/borrow")}
-        >
-          <span className="dashboard-card__icon">↓</span>
-          <span className="dashboard-card__title">Borrow</span>
-          <span className="dashboard-card__subtitle">Track money you borrowed</span>
-        </button>
 
-        <button
-          type="button"
-          className="dashboard-card dashboard-card--lend"
-          onClick={() => navigate("/lend")}
-        >
-          <span className="dashboard-card__icon">↑</span>
-          <span className="dashboard-card__title">Lend</span>
-          <span className="dashboard-card__subtitle">Track money you lent out</span>
-        </button>
-      </section>
+        <div className="auth-tabs">
+          <button
+            type="button"
+            className={`auth-tab ${!isSignUp ? "active" : ""}`}
+            onClick={() => {
+              setIsSignUp(false);
+              setMessage({ text: "", type: "" });
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            type="button"
+            className={`auth-tab ${isSignUp ? "active" : ""}`}
+            onClick={() => {
+              setIsSignUp(true);
+              setMessage({ text: "", type: "" });
+            }}
+          >
+            Sign Up
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="auth-form">
+          <div className="form-group">
+            <label>Mobile Number</label>
+            <input
+              type="tel"
+              className="form-input"
+              placeholder="e.g. 9876543210"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Password</label>
+            <input
+              type="password"
+              className="form-input"
+              placeholder="Enter password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          {message.text && (
+            <div className={`auth-alert auth-alert--${message.type}`}>
+              {message.text}
+            </div>
+          )}
+
+          <button type="submit" className="primary-btn" disabled={loading}>
+            {loading
+              ? "Processing..."
+              : isSignUp
+              ? "Create Account"
+              : "Sign In"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
 
-function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
+function PortalLayout({ userMobile, activeTab, onLogout, children }) {
   const navigate = useNavigate();
+
+  return (
+    <div className="portal-container">
+      <header className="portal-header">
+        <div className="header-brand">
+          <span className="brand-logo">💸</span>
+          <div>
+            <h1 className="brand-title">Finance Manager</h1>
+            <span className="user-badge">📱 {userMobile || "User"}</span>
+          </div>
+        </div>
+
+        <nav className="portal-nav">
+          <button
+            type="button"
+            className={`nav-tab nav-tab--borrow ${
+              activeTab === "borrow" ? "active" : ""
+            }`}
+            onClick={() => navigate("/borrow")}
+          >
+            ↓ Borrow Portal
+          </button>
+          <button
+            type="button"
+            className={`nav-tab nav-tab--lend ${
+              activeTab === "lend" ? "active" : ""
+            }`}
+            onClick={() => navigate("/lend")}
+          >
+            ↑ Lend Portal
+          </button>
+        </nav>
+
+        <button type="button" className="logout-btn" onClick={onLogout}>
+          Logout
+        </button>
+      </header>
+
+      <main className="portal-main">{children}</main>
+    </div>
+  );
+}
+
+function RecordPortal({ api, type, title, subtitle, totalLabel, userMobile, onLogout }) {
   const [records, setRecords] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
   const [form, setForm] = useState({
     person_name: "",
+    phone_number: "",
     amount: "",
     due_date: "",
     notes: "",
@@ -344,7 +256,7 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
 
   const authHeaders = useMemo(
     () => ({
-      Authorization: `Bearer ${getStoredAccessToken()}`,
+      Authorization: `Bearer ${localStorage.getItem(ACCESS_TOKEN_KEY)}`,
     }),
     []
   );
@@ -352,11 +264,14 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
   const endpoint = `/${type}/`;
 
   const fetchRecords = useCallback(async () => {
+    setLoading(true);
     try {
       const res = await api.get(endpoint, { headers: authHeaders });
       setRecords(parseListPayload(res.data));
     } catch (err) {
       setErrorMessage(getApiErrorMessage(err, `Failed to fetch ${type} records.`));
+    } finally {
+      setLoading(false);
     }
   }, [api, authHeaders, endpoint, type]);
 
@@ -367,6 +282,7 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
   const resetForm = () => {
     setForm({
       person_name: "",
+      phone_number: "",
       amount: "",
       due_date: "",
       notes: "",
@@ -381,6 +297,7 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
     try {
       const payload = {
         person_name: form.person_name,
+        phone_number: form.phone_number,
         amount: Number(form.amount),
         due_date: form.due_date,
         notes: form.notes,
@@ -388,7 +305,9 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
       };
 
       if (editingId) {
-        await api.put(`${endpoint}${editingId}/`, payload, { headers: authHeaders });
+        await api.put(`${endpoint}${editingId}/`, payload, {
+          headers: authHeaders,
+        });
       } else {
         await api.post(endpoint, payload, { headers: authHeaders });
       }
@@ -406,11 +325,26 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
     setEditingId(record.id);
     setForm({
       person_name: record.person_name || "",
+      phone_number: record.phone_number || "",
       amount: record.amount || "",
       due_date: record.due_date || "",
       notes: record.notes || "",
       status: record.status || "Pending",
     });
+  };
+
+  const handleToggleStatus = async (record) => {
+    const newStatus = record.status === "Pending" ? "Returned" : "Pending";
+    try {
+      await api.patch(
+        `${endpoint}${record.id}/`,
+        { status: newStatus },
+        { headers: authHeaders }
+      );
+      fetchRecords();
+    } catch (err) {
+      setErrorMessage(getApiErrorMessage(err, "Failed to update status."));
+    }
   };
 
   const handleDelete = async (id) => {
@@ -427,100 +361,117 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
   };
 
   const totalPendingAmount = records
-    .filter((record) => String(record.status || "").toLowerCase() === "pending")
-    .reduce((sum, record) => sum + Number(record.amount || 0), 0);
+    .filter((r) => String(r.status || "").toLowerCase() === "pending")
+    .reduce((sum, r) => sum + Number(r.amount || 0), 0);
 
   return (
-    <div className="records-page">
-      <div className="dashboard-header">
-        <div className="records-header-left">
-          <button
-            type="button"
-            className="back-button"
-            onClick={() => navigate("/dashboard")}
-          >
-            ←
-          </button>
-          <div>
-            <h1 className="auth-title">Finance Manager</h1>
-            <h2 className="dashboard-subtitle">{title}</h2>
-          </div>
+    <PortalLayout userMobile={userMobile} activeTab={type} onLogout={onLogout}>
+      <div className="portal-banner">
+        <div className="banner-info">
+          <h2>{title}</h2>
+          <p className="banner-subtitle">{subtitle}</p>
+        </div>
+        <div className="banner-stat">
+          <span className="stat-label">{totalLabel}</span>
+          <span className="stat-value">₹{totalPendingAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
         </div>
         <button
           type="button"
-          className="auth-button auth-button--secondary dashboard-logout"
+          className="action-btn"
           onClick={() => {
-            onLogout();
-            navigate("/login");
+            setShowForm((prev) => !prev);
+            if (showForm) resetForm();
           }}
         >
-          Logout
+          {showForm ? "✕ Close Form" : `+ Add New ${type === "borrow" ? "Borrow" : "Lend"} Record`}
         </button>
       </div>
 
-      <div className="records-toolbar">
-        <h3 className="dashboard-section-title">{subtitle}</h3>
-        <button
-          type="button"
-          className="auth-button records-add-button"
-          onClick={() => {
-            setShowForm((current) => !current);
-            if (showForm) {
-              resetForm();
-            }
-          }}
-        >
-          + Add New
-        </button>
-      </div>
+      {errorMessage && <div className="portal-error">{errorMessage}</div>}
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="dashboard-form records-form">
-          <input
-            className="auth-input"
-            placeholder="Person name"
-            value={form.person_name}
-            onChange={(e) => setForm({ ...form, person_name: e.target.value })}
-            required
-          />
-          <input
-            className="auth-input"
-            placeholder="Amount"
-            type="number"
-            min={0}
-            step="any"
-            value={form.amount}
-            onChange={(e) => setForm({ ...form, amount: e.target.value })}
-            required
-          />
-          <input
-            className="auth-input"
-            type="date"
-            value={form.due_date}
-            onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-            required
-          />
-          <textarea
-            className="auth-input records-textarea"
-            placeholder="Notes or reason"
-            value={form.notes}
-            onChange={(e) => setForm({ ...form, notes: e.target.value })}
-          />
-          <select
-            className="auth-input"
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-          >
-            <option value="Pending">Pending</option>
-            <option value="Returned">Returned</option>
-          </select>
-          <div className="records-form-actions">
-            <button className="auth-button" type="submit">
-              {editingId ? "Update" : "Submit"}
+        <form onSubmit={handleSubmit} className="record-form-card">
+          <h3>{editingId ? "Edit Record" : `New ${type === "borrow" ? "Borrow" : "Lend"} Entry`}</h3>
+          <div className="form-grid">
+            <div className="form-field">
+              <label>Person Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="e.g. John Doe"
+                value={form.person_name}
+                onChange={(e) => setForm({ ...form, person_name: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Phone Number (optional)</label>
+              <input
+                type="tel"
+                className="form-input"
+                placeholder="e.g. 9876543210"
+                value={form.phone_number}
+                onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Amount (₹)</label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="Amount"
+                min={0}
+                step="any"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Due Date</label>
+              <input
+                type="date"
+                className="form-input"
+                value={form.due_date}
+                onChange={(e) => setForm({ ...form, due_date: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Status</label>
+              <select
+                className="form-input"
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+              >
+                <option value="Pending">Pending</option>
+                <option value="Returned">Returned</option>
+              </select>
+            </div>
+
+            <div className="form-field full-width">
+              <label>Notes / Reason</label>
+              <textarea
+                className="form-input"
+                rows={2}
+                placeholder="Optional notes or reason for this entry..."
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="primary-btn">
+              {editingId ? "Save Changes" : "Create Record"}
             </button>
             <button
               type="button"
-              className="auth-button auth-button--secondary"
+              className="secondary-btn"
               onClick={() => {
                 resetForm();
                 setShowForm(false);
@@ -532,64 +483,71 @@ function RecordsPage({ api, type, title, subtitle, totalLabel, onLogout }) {
         </form>
       )}
 
-      {errorMessage && <p className="auth-message">{errorMessage}</p>}
+      <div className="records-grid">
+        {loading && <div className="loading-spinner">Loading records...</div>}
+        {!loading && records.length === 0 && (
+          <div className="empty-state">
+            <span className="empty-icon">📂</span>
+            <h3>No {type} records found</h3>
+            <p>Click the button above to add your first entry.</p>
+          </div>
+        )}
 
-      <div className="records-total">
-        {totalLabel}: ₹{totalPendingAmount.toFixed(2)}
-      </div>
-
-      <div className="records-list">
-        {records.length === 0 && <p className="records-empty">No records found.</p>}
         {records.map((record) => {
-          const normalizedStatus = String(record.status || "").toLowerCase();
-          const statusClass =
-            normalizedStatus === "returned"
-              ? "status-badge status-badge--returned"
-              : "status-badge status-badge--pending";
-
+          const isPending = record.status === "Pending";
           return (
-            <div key={record.id} className="record-item">
-              <div className="record-row">
-                <span className="loan-label">Person</span>
-                <span className="loan-value">{record.person_name}</span>
+            <div key={record.id} className={`record-card ${type}-card`}>
+              <div className="card-top">
+                <div className="person-info">
+                  <h3 className="person-name">{record.person_name}</h3>
+                  {record.phone_number && (
+                    <span className="person-phone">📞 {record.phone_number}</span>
+                  )}
+                </div>
+                <span
+                  className={`status-pill ${
+                    isPending ? "pill-pending" : "pill-returned"
+                  }`}
+                  onClick={() => handleToggleStatus(record)}
+                  title="Click to toggle status"
+                >
+                  {record.status}
+                </span>
               </div>
-              <div className="record-row">
-                <span className="loan-label">Amount</span>
-                <span className="loan-value">₹{record.amount}</span>
+
+              <div className="card-body">
+                <div className="amount-display">
+                  <span className="amount-label">Amount:</span>
+                  <span className="amount-value">₹{Number(record.amount).toLocaleString("en-IN")}</span>
+                </div>
+                <div className="due-display">
+                  <span className="due-label">Due Date:</span>
+                  <span className="due-value">{record.due_date}</span>
+                </div>
+                {record.notes && <p className="record-notes">"{record.notes}"</p>}
               </div>
-              <div className="record-row">
-                <span className="loan-label">Due Date</span>
-                <span className="loan-value">{record.due_date}</span>
-              </div>
-              <div className="record-row">
-                <span className="loan-label">Notes</span>
-                <span className="loan-value">{record.notes || "-"}</span>
-              </div>
-              <div className="record-row">
-                <span className="loan-label">Status</span>
-                <span className={statusClass}>{record.status}</span>
-              </div>
-              <div className="record-actions">
+
+              <div className="card-actions">
                 <button
                   type="button"
-                  className="auth-button auth-button--secondary record-action-button"
+                  className="card-btn card-btn--edit"
                   onClick={() => handleEdit(record)}
                 >
-                  Edit
+                  ✏️ Edit
                 </button>
                 <button
                   type="button"
-                  className="auth-button record-action-button record-action-button--danger"
+                  className="card-btn card-btn--delete"
                   onClick={() => handleDelete(record.id)}
                 >
-                  Delete
+                  🗑️ Delete
                 </button>
               </div>
             </div>
           );
         })}
       </div>
-    </div>
+    </PortalLayout>
   );
 }
 
@@ -601,20 +559,25 @@ function App() {
       }),
     []
   );
+
   const [accessToken, setAccessToken] = useState(
-    () => getStoredAccessToken()
+    () => localStorage.getItem(ACCESS_TOKEN_KEY) || ""
+  );
+  const [userMobile, setUserMobile] = useState(
+    () => localStorage.getItem(USER_MOBILE_KEY) || ""
   );
 
-  const handleLogin = (access, refresh) => {
+  const handleLogin = (access, refresh, mobile) => {
     setAccessToken(access);
+    setUserMobile(mobile);
     localStorage.setItem(ACCESS_TOKEN_KEY, access);
     localStorage.setItem(REFRESH_TOKEN_KEY, refresh);
-    localStorage.setItem(ACCESS_FALLBACK_KEY, access);
-    localStorage.setItem(REFRESH_FALLBACK_KEY, refresh);
+    localStorage.setItem(USER_MOBILE_KEY, mobile);
   };
 
   const handleLogout = () => {
     setAccessToken("");
+    setUserMobile("");
     localStorage.clear();
   };
 
@@ -624,25 +587,9 @@ function App() {
         path="/login"
         element={
           accessToken ? (
-            <Navigate to="/dashboard" replace />
+            <Navigate to="/borrow" replace />
           ) : (
-            <LoginPage api={api} onLogin={handleLogin} />
-          )
-        }
-      />
-      <Route
-        path="/register"
-        element={
-          accessToken ? <Navigate to="/dashboard" replace /> : <RegisterPage api={api} />
-        }
-      />
-      <Route
-        path="/dashboard"
-        element={
-          accessToken ? (
-            <DashboardPage onLogout={handleLogout} />
-          ) : (
-            <Navigate to="/login" replace />
+            <AuthPage api={api} onLogin={handleLogin} />
           )
         }
       />
@@ -650,12 +597,13 @@ function App() {
         path="/borrow"
         element={
           accessToken ? (
-            <RecordsPage
+            <RecordPortal
               api={api}
               type="borrow"
-              title="Borrow Records"
-              subtitle="Borrow Records"
+              title="Borrow Portal"
+              subtitle="Track money you have borrowed from others"
               totalLabel="Total Borrowed (Pending)"
+              userMobile={userMobile}
               onLogout={handleLogout}
             />
           ) : (
@@ -667,12 +615,13 @@ function App() {
         path="/lend"
         element={
           accessToken ? (
-            <RecordsPage
+            <RecordPortal
               api={api}
               type="lend"
-              title="Lend Records"
-              subtitle="Lend Records"
+              title="Lend Portal"
+              subtitle="Track money you have lent to others"
               totalLabel="Total Lent (Pending)"
+              userMobile={userMobile}
               onLogout={handleLogout}
             />
           ) : (
@@ -682,7 +631,7 @@ function App() {
       />
       <Route
         path="*"
-        element={<Navigate to={accessToken ? "/dashboard" : "/login"} replace />}
+        element={<Navigate to={accessToken ? "/borrow" : "/login"} replace />}
       />
     </Routes>
   );

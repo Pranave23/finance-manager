@@ -70,3 +70,34 @@ class LoanViewSet(
             ).get(pk=loan.pk)
         )
         return Response(detail.data, status=status.HTTP_200_OK)
+
+
+from apps.loans.models import BorrowLend
+from apps.loans.serializers import BorrowLendSerializer
+
+
+class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
+    serializer_class = BorrowLendSerializer
+    envelope_message = "OK"
+
+    def get_queryset(self):
+        return BorrowLend.objects.filter(
+            user=self.request.user, type=BorrowLend.TYPE_BORROW
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, type=BorrowLend.TYPE_BORROW)
+
+
+class LendViewSet(EnvelopeMixin, viewsets.ModelViewSet):
+    serializer_class = BorrowLendSerializer
+    envelope_message = "OK"
+
+    def get_queryset(self):
+        return BorrowLend.objects.filter(
+            user=self.request.user, type=BorrowLend.TYPE_LEND
+        )
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, type=BorrowLend.TYPE_LEND)
+

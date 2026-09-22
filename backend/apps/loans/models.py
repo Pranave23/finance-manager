@@ -46,3 +46,39 @@ class Loan(BaseModel):
 
     def __str__(self) -> str:
         return f"Loan {self.id} — {self.contact.name}"
+
+
+class BorrowLend(BaseModel):
+    TYPE_BORROW = "borrow"
+    TYPE_LEND = "lend"
+    TYPE_CHOICES = [
+        (TYPE_BORROW, "Borrow"),
+        (TYPE_LEND, "Lend"),
+    ]
+
+    STATUS_PENDING = "Pending"
+    STATUS_RETURNED = "Returned"
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_RETURNED, "Returned"),
+    ]
+
+    user = models.ForeignKey(
+        "auth.User", on_delete=models.CASCADE, related_name="borrow_lend_records"
+    )
+    person_name = models.CharField(max_length=255)
+    phone_number = models.CharField(max_length=32, blank=True, default="")
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    due_date = models.DateField()
+    notes = models.TextField(blank=True, default="")
+    status = models.CharField(
+        max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING
+    )
+    type = models.CharField(max_length=16, choices=TYPE_CHOICES)
+
+    class Meta:
+        ordering = ["-due_date", "-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.type.capitalize()} — {self.person_name} — ₹{self.amount}"
+
