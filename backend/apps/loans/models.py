@@ -100,13 +100,39 @@ class Lender(BaseModel):
 
 
 class Borrow(BaseModel):
+    INTEREST_SIMPLE = "simple"
+    INTEREST_COMPOUND = "compound"
+    INTEREST_MANUAL = "manual"
+    INTEREST_CHOICES = [
+        (INTEREST_SIMPLE, "Simple"),
+        (INTEREST_COMPOUND, "Compound"),
+        (INTEREST_MANUAL, "Manual (fixed amount)"),
+    ]
+
     PERIOD_DAILY = "daily"
     PERIOD_WEEKLY = "weekly"
     PERIOD_MONTHLY = "monthly"
+    PERIOD_YEARLY = "yearly"
+    PERIOD_OVERALL = "overall"
     PERIOD_CHOICES = [
         (PERIOD_DAILY, "Daily"),
         (PERIOD_WEEKLY, "Weekly"),
         (PERIOD_MONTHLY, "Monthly"),
+        (PERIOD_YEARLY, "Yearly"),
+        (PERIOD_OVERALL, "Overall (One-time)"),
+    ]
+
+    SCHEDULE_DAILY = "daily"
+    SCHEDULE_WEEKLY = "weekly"
+    SCHEDULE_MONTHLY = "monthly"
+    SCHEDULE_YEARLY = "yearly"
+    SCHEDULE_ONE_TIME = "one_time"
+    SCHEDULE_CHOICES = [
+        (SCHEDULE_DAILY, "Daily"),
+        (SCHEDULE_WEEKLY, "Weekly"),
+        (SCHEDULE_MONTHLY, "Monthly"),
+        (SCHEDULE_YEARLY, "Yearly"),
+        (SCHEDULE_ONE_TIME, "One-time (on due date)"),
     ]
 
     user = models.ForeignKey(
@@ -116,10 +142,21 @@ class Borrow(BaseModel):
         Lender, on_delete=models.PROTECT, related_name="borrows"
     )
     principal_amount = models.DecimalField(max_digits=14, decimal_places=2)
-    interest_rate = models.DecimalField(max_digits=7, decimal_places=4, default=0)  # stored as percentage, e.g., 2 = 2%
-    rate_period = models.CharField(max_length=16, choices=PERIOD_CHOICES)
-    number_of_installments = models.PositiveIntegerField(default=1)
-    fixed_principal_installment = models.DecimalField(max_digits=14, decimal_places=2, editable=False, default=0)
+    interest_type = models.CharField(
+        max_length=16, choices=INTEREST_CHOICES, default=INTEREST_SIMPLE
+    )
+    # Percentage per rate_period (2 = 2%). Used by simple / compound.
+    interest_rate = models.DecimalField(max_digits=7, decimal_places=4, default=0)
+    rate_period = models.CharField(
+        max_length=16, choices=PERIOD_CHOICES, default=PERIOD_MONTHLY
+    )
+    # Flat rupee interest for the whole loan or per rate_period. Used by manual only.
+    manual_interest_amount = models.DecimalField(
+        max_digits=14, decimal_places=2, default=0
+    )
+    repayment_schedule_type = models.CharField(
+        max_length=16, choices=SCHEDULE_CHOICES, default=SCHEDULE_MONTHLY
+    )
     borrowed_date = models.DateField()
     due_date = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True, default="")
@@ -139,11 +176,6 @@ class BorrowPayment(BaseModel):
     )
     payment_date = models.DateField()
     amount_paid = models.DecimalField(max_digits=14, decimal_places=2)
-    interest_component = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    principal_component = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    remaining_principal_after = models.DecimalField(max_digits=14, decimal_places=2, default=0)
-    interest_shortfall = models.BooleanField(default=False)
-    overpayment_amount = models.DecimalField(max_digits=14, decimal_places=2, default=0)
     notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 

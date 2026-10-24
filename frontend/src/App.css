@@ -926,3 +926,341 @@ body {
   color: var(--text-muted);
   cursor: pointer;
 }
+
+/* ================= Borrow form v2 ================= */
+.form-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.form-section {
+  padding: 18px 0;
+  border-top: 1px solid var(--card-border);
+}
+
+.form-section:first-of-type {
+  border-top: none;
+}
+
+.form-section__title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+.field-hint {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.link-btn:hover {
+  color: var(--text-main);
+}
+
+.link-btn--inline {
+  color: var(--primary-color);
+  font-size: 0.78rem;
+  margin-top: 6px;
+  text-align: left;
+}
+
+.interest-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.interest-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  background: var(--input-bg);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.interest-option:hover {
+  border-color: rgba(99, 102, 241, 0.5);
+}
+
+.interest-option--active {
+  border-color: var(--primary-color);
+  background: rgba(99, 102, 241, 0.12);
+}
+
+.interest-option__title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.interest-option__desc {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.interest-explainer {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.45);
+  border-left: 3px solid var(--primary-color);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+}
+
+.interest-explainer em {
+  color: var(--text-muted);
+  font-style: normal;
+  font-size: 0.78rem;
+}
+
+.estimate-panel {
+  margin: 4px 0 18px;
+  padding: 16px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--card-border);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.estimate-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  padding: 4px 0;
+  color: #cbd5e1;
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-row--total {
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--card-border);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.estimate-note {
+  margin-top: 10px;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* ================= Borrow table v2 ================= */
+.borrow-table .cell-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cell-lender {
+  font-weight: 600;
+}
+
+.cell-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.cell-sub-strong {
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.cell-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.btn-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 6px;
+  border: 1px solid var(--card-border);
+  background: transparent;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.btn-sm:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sm:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-sm--primary {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-sm--primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.btn-sm--danger {
+  color: #fca5a5;
+}
+
+.btn-sm--danger:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.detail-divider {
+  border: none;
+  border-top: 1px solid var(--card-border);
+  margin: 8px 0;
+}
+
+.text-danger {
+  color: #f87171;
+}
+
+.text-bold {
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .interest-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= Promised Schedule & Payment Impact ================= */
+.promise-summary-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: var(--radius-md);
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid var(--card-border);
+}
+
+.promise-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.promise-summary-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.promise-summary-val {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.promise-summary-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.schedule-alert {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  margin-bottom: 16px;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  border-left: 4px solid var(--primary-color);
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.schedule-alert__badge {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.78rem;
+  margin-bottom: 4px;
+}
+
+.schedule-alert--late {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+  color: #fecaca;
+}
+
+.schedule-alert--early {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  color: #bbf7d0;
+}
+
+.schedule-alert--on_time {
+  border-left-color: #6366f1;
+  background: rgba(99, 102, 241, 0.12);
+  color: #e2e8f0;
+}
+
+.quick-pay-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.payment-impact-panel {
+  margin-top: 14px;
+}
+
+.schedule-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.schedule-pill--early {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+.schedule-pill--soon {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}

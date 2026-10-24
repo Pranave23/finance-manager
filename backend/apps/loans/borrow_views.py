@@ -4,10 +4,9 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from apps.loans.borrow_calculations import compute_fixed_principal_metrics
+from apps.loans.borrow_calculations import compute_borrow_metrics
 from apps.loans.borrow_serializers import (
     BorrowListSerializer,
-    BorrowPaymentSerializer,
     BorrowPaymentWriteSerializer,
     BorrowWriteSerializer,
     LenderSerializer,
@@ -31,7 +30,7 @@ class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
     envelope_message = "OK"
 
     def get_queryset(self):
-        return Borrow.objects.filter(user=self.request.user)
+        return Borrow.objects.filter(user=self.request.user).select_related("lender").prefetch_related("payments")
 
     def get_serializer_class(self):
         if self.action in ("create", "update", "partial_update"):
@@ -56,7 +55,7 @@ class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
         borrow = Borrow.objects.get(pk=serializer.instance.pk)
-        return Response(BorrowListSerializer(borrow).data, status=status.HTTP_201_CREATED)
+        return Response(BorrowListSerializer(self.get_queryset().get(pk=borrow.pk)).data, status=status.HTTP_201_CREATED)
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop("partial", False)
@@ -65,7 +64,7 @@ class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
         borrow = Borrow.objects.get(pk=instance.pk)
-        return Response(BorrowListSerializer(borrow).data)
+        return Response(BorrowListSerializer(self.get_queryset().get(pk=borrow.pk)).data)
 
     @action(detail=True, methods=["post"], url_path="payments")
     def add_payment(self, request, pk=None):
@@ -78,13 +77,13 @@ class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
         serializer = BorrowPaymentWriteSerializer(data=payload, context={"borrow": borrow})
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(BorrowListSerializer(borrow).data, status=status.HTTP_201_CREATED)
+        return Response(BorrowListSerializer(self.get_queryset().get(pk=borrow.pk)).data, status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["delete"], url_path=r"payments/(?P<payment_id>[^/.]+)")
     def delete_payment(self, request, pk=None, payment_id=None):
         borrow = self.get_object()
         BorrowPayment.objects.filter(borrow=borrow, pk=payment_id).delete()
-        return Response(BorrowListSerializer(borrow).data)
+        return Response(BorrowListSerializer(self.get_queryset().get(pk=borrow.pk)).data)
 
     @action(detail=False, methods=["get"], url_path="summary")
     def summary(self, request):
@@ -95,7 +94,7 @@ class BorrowViewSet(EnvelopeMixin, viewsets.ModelViewSet):
         overdue_count = 0
 
         for borrow in borrows:
-            metrics = compute_fixed_principal_metrics(borrow)
+            metrics = compute_borrow_metrics(borrow)
             total_borrowed += Decimal(borrow.principal_amount)
             total_outstanding += metrics["remaining_balance"]
             total_paid += metrics["total_paid"]
