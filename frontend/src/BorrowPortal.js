@@ -370,6 +370,8 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const authHeaders = useMemo(
     () => ({ Authorization: `Bearer ${localStorage.getItem(ACCESS_TOKEN_KEY)}` }),
@@ -382,6 +384,21 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
     () => computePaymentPreview(paymentBorrow, paymentForm),
     [paymentBorrow, paymentForm]
   );
+
+  const filteredBorrows = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return borrows.filter((r) => {
+      if (statusFilter === "active" && r.status === "Paid") return false;
+      if (statusFilter === "overdue" && !r.is_overdue && r.schedule_status !== "late") return false;
+      if (statusFilter === "paid" && r.status !== "Paid") return false;
+      if (!q) return true;
+      const hay = [r.lender?.name, r.lender?.phone, r.lender?.email, r.notes]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [borrows, searchQuery, statusFilter]);
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -1162,15 +1179,57 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
 
       {/* ------------------------------------------------ Table */}
       <div className="borrow-table-wrap">
+        {!loading && borrows.length > 0 && (
+          <div className="ledger-toolbar">
+            <div className="ledger-search-wrap">
+              <span className="ledger-search-icon" aria-hidden="true">⌕</span>
+              <input
+                type="search"
+                className="ledger-search-input"
+                placeholder="Search lender name, mobile, or notes…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="ledger-filter-pills" role="tablist" aria-label="Filter loans">
+              {[
+                { key: "all", label: `All (${borrows.length})` },
+                { key: "active", label: `Active (${borrows.filter((b) => b.status !== "Paid").length})` },
+                {
+                  key: "overdue",
+                  label: `Attention (${borrows.filter((b) => b.is_overdue || b.schedule_status === "late").length})`,
+                },
+                { key: "paid", label: `Settled (${borrows.filter((b) => b.status === "Paid").length})` },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  className={`filter-pill ${statusFilter === tab.key ? "filter-pill--active" : ""}`}
+                  onClick={() => setStatusFilter(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {loading && <div className="loading-spinner">Loading…</div>}
         {!loading && borrows.length === 0 && (
           <div className="empty-state">
+            <span className="empty-icon" aria-hidden="true">◈</span>
             <h3>No borrowings yet</h3>
             <p>Add your first one with "New borrowing".</p>
           </div>
         )}
+        {!loading && borrows.length > 0 && filteredBorrows.length === 0 && (
+          <div className="empty-state">
+            <h3>No matching loans</h3>
+            <p>Try clearing your search or switching the status filter.</p>
+          </div>
+        )}
 
-        {!loading && borrows.length > 0 && (
+        {!loading && filteredBorrows.length > 0 && (
           <table className="borrow-table">
             <thead>
               <tr>
@@ -1189,10 +1248,12 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
               </tr>
             </thead>
             <tbody>
-              {borrows.map((row) => {
+              {filteredBorrows.map((row) => {
                 const expanded = expandedId === row.id;
                 const paid = row.status === "Paid";
                 const badge = paid ? "badge-paid" : row.status === "Partial" ? "badge-partial" : "badge-unpaid";
+                const denom = Number(row.total_payable_to_date || row.principal_amount || 1);
+                const paidPct = Math.min(100, Math.round((Number(row.total_paid || 0) / Math.max(denom, 1)) * 100));
 
                 return (
                   <React.Fragment key={row.id}>
@@ -1235,7 +1296,12 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                       <td className="cell-num">
                         {row.estimated_total_at_due != null ? money(row.estimated_total_at_due) : "—"}
                       </td>
-                      <td className="cell-num">{money(row.total_paid)}</td>
+                      <td className="cell-num">
+                        <div>{money(row.total_paid)}</div>
+                        <div className="progress-track" title={`${paidPct}% repaid`}>
+                          <div className="progress-fill" style={{ width: `${paid ? 100 : paidPct}%` }} />
+                        </div>
+                      </td>
                       <td className="cell-num text-bold">{money(row.remaining_balance)}</td>
                       <td>
                         <div className="status-badge-container">

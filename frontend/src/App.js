@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 import "./App.css";
 import BorrowPortal from "./BorrowPortal";
+import LendPortal from "./LendPortal";
 
 const ACCESS_TOKEN_KEY = "fm_access_token";
 const REFRESH_TOKEN_KEY = "fm_refresh_token";
@@ -118,11 +119,12 @@ function AuthPage({ api, onLogin }) {
     <div className="auth-wrapper">
       <div className="auth-card">
         <div className="auth-header">
+          <div className="auth-brand-pill">◈ FINVAULT LEDGER</div>
           <h1 className="auth-title">Loan Manager</h1>
           <p className="auth-subtitle">
             {isSignUp
-              ? "Register with Mobile Number & Password"
-              : "Sign in with Mobile Number & Password"}
+              ? "Create your private lending & borrowing workspace"
+              : "Sign in to your lending & borrowing command center"}
           </p>
         </div>
 
@@ -182,10 +184,10 @@ function AuthPage({ api, onLogin }) {
 
           <button type="submit" className="primary-btn" disabled={loading}>
             {loading
-              ? "Processing..."
+              ? "Authenticating..."
               : isSignUp
-                ? "Create Account"
-                : "Sign In"}
+                ? "Create Account →"
+                : "Sign In to Workspace →"}
           </button>
         </form>
       </div>
@@ -200,34 +202,44 @@ export function PortalLayout({ userMobile, activeTab, onLogout, children }) {
     <div className="portal-container">
       <header className="portal-header">
         <div className="header-brand">
+          <div className="brand-emblem" aria-hidden="true">
+            ◈
+          </div>
           <div>
-            <h1 className="brand-title">Loan Manager</h1>
-            <span className="user-badge"> {userMobile || "User"}</span>
+            <div className="brand-title-row">
+              <h1 className="brand-title">Loan Manager</h1>
+              <span className="brand-tag">PRO</span>
+            </div>
+            <span className="user-badge">
+              <span className="status-dot" /> {userMobile || "Authenticated"}
+            </span>
           </div>
         </div>
 
-        <nav className="portal-nav">
+        <nav className="portal-nav" aria-label="Portal Switcher">
           <button
             type="button"
-            className={`nav-tab nav-tab--borrow ${activeTab === "borrow" ? "active" : ""
-              }`}
+            className={`nav-tab nav-tab--borrow ${activeTab === "borrow" ? "active" : ""}`}
             onClick={() => navigate("/borrow")}
           >
-            ↓ Borrow Portal
+            <span className="nav-tab__icon">↙</span>
+            <span>Borrow Portal</span>
           </button>
           <button
             type="button"
-            className={`nav-tab nav-tab--lend ${activeTab === "lend" ? "active" : ""
-              }`}
+            className={`nav-tab nav-tab--lend ${activeTab === "lend" ? "active" : ""}`}
             onClick={() => navigate("/lend")}
           >
-            ↑ Lend Portal
+            <span className="nav-tab__icon">↗</span>
+            <span>Lend Portal</span>
           </button>
         </nav>
 
-        <button type="button" className="logout-btn" onClick={onLogout}>
-          Logout
-        </button>
+        <div className="header-actions">
+          <button type="button" className="logout-btn" onClick={onLogout}>
+            Sign Out
+          </button>
+        </div>
       </header>
 
       <main className="portal-main">{children}</main>
@@ -608,12 +620,9 @@ function App() {
         path="/lend"
         element={
           accessToken ? (
-            <RecordPortal
+            <LendPortal
               api={api}
-              type="lend"
-              title="Lend Portal"
-              subtitle="Track money you have lent to others"
-              totalLabel="Total Lent (Pending)"
+              PortalLayout={PortalLayout}
               userMobile={userMobile}
               onLogout={handleLogout}
             />

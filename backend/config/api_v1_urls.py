@@ -4,6 +4,8 @@ from rest_framework.routers import DefaultRouter
 from apps.contacts.views import ContactViewSet
 from apps.loans.borrow_views import BorrowViewSet as EnhancedBorrowViewSet
 from apps.loans.borrow_views import LenderViewSet
+from apps.loans.lend_views import BorrowerViewSet
+from apps.loans.lend_views import LendViewSet as EnhancedLendViewSet
 from apps.loans.views import BorrowViewSet, LendViewSet, LoanViewSet
 from apps.payments.views import (
     PaymentViewSet,
@@ -23,9 +25,11 @@ router.register(r"contacts", ContactViewSet, basename="contact")
 router.register(r"loans", LoanViewSet, basename="loan")
 router.register(r"payments", PaymentViewSet, basename="payment")
 router.register(r"lenders", LenderViewSet, basename="lender")
+router.register(r"borrowers", BorrowerViewSet, basename="borrower")
 router.register(r"borrow-records", BorrowViewSet, basename="borrow-record")
+router.register(r"lend-records", LendViewSet, basename="lend-record")
 router.register(r"borrow", EnhancedBorrowViewSet, basename="borrow")
-router.register(r"lend", LendViewSet, basename="lend")
+router.register(r"lend", EnhancedLendViewSet, basename="lend")
 
 urlpatterns = [
     path("auth/register/", MobileRegisterView.as_view(), name="auth_register"),

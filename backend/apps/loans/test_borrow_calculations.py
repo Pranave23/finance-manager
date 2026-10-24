@@ -6,7 +6,8 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 
 from apps.loans.borrow_calculations import compute_borrow_metrics
-from apps.loans.models import Borrow, BorrowPayment, Lender
+from apps.loans.lend_calculations import compute_lend_metrics
+from apps.loans.models import Borrow, Borrower, BorrowPayment, Lend, Lender, LendPayment
 
 User = get_user_model()
 START = date(2025, 1, 1)
@@ -172,3 +173,97 @@ class BorrowApiTests(TestCase):
     def test_manual_requires_amount(self):
         res = self.client.post("/api/v1/borrow/", self.payload(interest_type="manual"), format="json")
         self.assertEqual(res.status_code, 400)
+
+
+class LendCalculationAndApiTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="7777777777", password="pw123456")
+        self.borrower = Borrower.objects.create(
+            user=self.user,
+            name="Ramesh Kumar",
+            phone="9876543210",
+            aadhar_number="234567890123",
+            address="12 MG Road, Bengaluru",
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.user)
+
+    def make_lend(self, **kw):
+        data = dict(
+            user=self.user,
+            borrower=self.borrower,
+            principal_amount=Decimal("50000"),
+            interest_type=Lend.INTEREST_SIMPLE,
+            interest_rate=Decimal("2"),
+            rate_period=Lend.PERIOD_MONTHLY,
+            repayment_schedule_type=Lend.SCHEDULE_MONTHLY,
+            lent_date=START,
+            due_date=ONE_YEAR_LATER,
+            collateral_type=Lend.COLLATERAL_GOLD,
+            collateral_description="22K Gold Chain 15g",
+            collateral_estimated_value=Decimal("80000"),
+            chk_aadhar_verified=True,
+            chk_mobile_verified=True,
+            chk_collateral_inspected=True,
+        )
+        data.update(kw)
+        return Lend.objects.create(**data)
+
+    def test_ltv_risk_and_checklist_metrics(self):
+        lend = self.make_lend()
+        m = compute_lend_metrics(lend, today=START)
+        # LTV = 50000 / 80000 * 100 = 62.50% -> Moderate LTV (60% < LTV <= 80%)
+        self.assertEqual(m["ltv_percent"], Decimal("62.50"))
+        self.assertEqual(m["risk_grade"], "Moderate LTV")
+        self.assertEqual(m["checklist_completed"], 3)
+        self.assertEqual(m["checklist_total"], 6)
+        # 50000 + (50000 * 2% * 12) = 62000; 12 monthly installments -> 5166.67
+        self.assertEqual(m["estimated_total_at_due"], Decimal("62000.00"))
+        self.assertEqual(m["next_payment_amount"], Decimal("5166.67"))
+
+    def test_aadhar_validation_and_checklist_toggle_api(self):
+        # Invalid Aadhaar (not 12 digits) rejected
+        bad_res = self.client.post(
+            "/api/v1/borrowers/",
+            {"name": "Suresh", "phone": "9123456780", "aadhar_number": "12345"},
+            format="json",
+        )
+        self.assertEqual(bad_res.status_code, 400)
+
+        # Create Lend via API
+        create_res = self.client.post(
+            "/api/v1/lend/",
+            {
+                "borrower_id": self.borrower.id,
+                "principal_amount": "40000",
+                "interest_type": "simple",
+                "interest_rate": "2",
+                "rate_period": "monthly",
+                "repayment_schedule_type": "monthly",
+                "lent_date": "2025-01-01",
+                "due_date": "2026-01-01",
+                "collateral_type": "gold",
+                "collateral_description": "Gold ring 10g",
+                "collateral_estimated_value": "60000",
+                "chk_aadhar_verified": True,
+            },
+            format="json",
+        )
+        self.assertEqual(create_res.status_code, 201, create_res.content)
+        lend_data = create_res.json().get("data")
+        lend_id = lend_data["id"]
+        self.assertEqual(lend_data["checklist_completed"], 1)
+        self.assertEqual(Decimal(str(lend_data["ltv_percent"])), Decimal("66.67"))
+
+        # Toggle checklist item via PATCH /api/v1/lend/:id/checklist/
+        chk_res = self.client.patch(
+            f"/api/v1/lend/{lend_id}/checklist/",
+            {"chk_mobile_verified": True, "chk_agreement_signed": True},
+            format="json",
+        )
+        self.assertEqual(chk_res.status_code, 200, chk_res.content)
+        chk_data = chk_res.json().get("data")
+        self.assertEqual(chk_data["checklist_completed"], 3)
+        self.assertTrue(chk_data["chk_mobile_verified"])
+        self.assertTrue(chk_data["chk_agreement_signed"])
+
