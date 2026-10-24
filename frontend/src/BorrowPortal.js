@@ -56,17 +56,10 @@ function formatMoney(value, currency = "INR") {
 }
 
 function formatInterestInfo(row) {
-  if (!row || row.interest_type === "None") return "None";
-  if (row.interest_type === "Manual") {
-    return `Manual (${formatMoney(row.manual_interest_amount, row.currency)})`;
-  }
-  if (row.interest_type === "Simple") {
-    return `Simple (${row.interest_rate}% / ${row.rate_period || "mo"})`;
-  }
-  if (row.interest_type === "Compound") {
-    return `Compound (${row.interest_rate}% / ${row.rate_period || "yr"} compounded ${row.compounding_frequency || "mo"})`;
-  }
-  return row.interest_type;
+  if (!row) return "—";
+  const rate = Number(row.interest_rate || 0);
+  const period = row.rate_period || "monthly";
+  return `${rate}% / ${period}`;
 }
 
 const EMPTY_BORROW_FORM = {
@@ -77,16 +70,12 @@ const EMPTY_BORROW_FORM = {
   new_lender_email: "",
   new_lender_notes: "",
   principal_amount: "",
-  currency: "INR",
+  interest_rate: "",
+  rate_period: "monthly",
+  number_of_installments: "1",
   borrowed_date: new Date().toISOString().slice(0, 10),
   is_open_ended: false,
   due_date: "",
-  interest_type: "None",
-  interest_rate: "",
-  rate_period: "monthly",
-  compounding_frequency: "monthly",
-  manual_interest_amount: "",
-  repayment_schedule_type: "one_time",
   notes: "",
 };
 
@@ -155,16 +144,12 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
       new_lender_email: "",
       new_lender_notes: "",
       principal_amount: row.principal_amount,
-      currency: row.currency || "INR",
+      interest_rate: row.interest_rate ?? "",
+      rate_period: row.rate_period || "monthly",
+      number_of_installments: row.number_of_installments || "1",
       borrowed_date: row.borrowed_date,
       is_open_ended: !row.due_date,
       due_date: row.due_date || "",
-      interest_type: row.interest_type,
-      interest_rate: row.interest_rate ?? "",
-      rate_period: row.rate_period || "monthly",
-      compounding_frequency: row.compounding_frequency || "monthly",
-      manual_interest_amount: row.manual_interest_amount ?? "",
-      repayment_schedule_type: row.repayment_schedule_type || "one_time",
       notes: row.notes || "",
     });
   };
@@ -186,37 +171,16 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
       lenderId = lender.id;
     }
 
-    const payload = {
+    return {
       lender_id: lenderId,
       principal_amount: Number(form.principal_amount),
-      currency: form.currency,
+      interest_rate: Number(form.interest_rate || 0),
+      rate_period: form.rate_period || "monthly",
+      number_of_installments: Number(form.number_of_installments || 1),
       borrowed_date: form.borrowed_date,
       due_date: form.is_open_ended ? null : form.due_date || null,
-      interest_type: form.interest_type,
-      rate_period: form.rate_period,
-      repayment_schedule_type: form.repayment_schedule_type,
-      notes: form.notes,
+      notes: form.notes || "",
     };
-
-    if (form.interest_type === "Simple" || form.interest_type === "Compound") {
-      payload.interest_rate = Number(form.interest_rate);
-    } else {
-      payload.interest_rate = null;
-    }
-
-    if (form.interest_type === "Compound") {
-      payload.compounding_frequency = form.compounding_frequency;
-    } else {
-      payload.compounding_frequency = "";
-    }
-
-    if (form.interest_type === "Manual") {
-      payload.manual_interest_amount = Number(form.manual_interest_amount);
-    } else {
-      payload.manual_interest_amount = null;
-    }
-
-    return payload;
   };
 
   const handleSubmit = async (e) => {
@@ -502,115 +466,50 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
             </div>
 
             <div className="form-field">
-              <label>Interest Type</label>
+              <label>Interest Rate (%) *</label>
+              <input
+                type="number"
+                step="any"
+                min={0}
+                placeholder="e.g. 2 for 2%"
+                className="form-input"
+                value={form.interest_rate}
+                onChange={(e) =>
+                  setForm({ ...form, interest_rate: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="form-field">
+              <label>Rate Period *</label>
               <select
                 className="form-input"
-                value={form.interest_type}
+                value={form.rate_period}
                 onChange={(e) =>
-                  setForm({ ...form, interest_type: e.target.value })
+                  setForm({ ...form, rate_period: e.target.value })
                 }
               >
-                <option value="None">None (0% Interest)</option>
-                <option value="Simple">Simple Interest</option>
-                <option value="Compound">Compound Interest</option>
-                <option value="Manual">Manual Interest Amount</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
               </select>
             </div>
 
-            {(form.interest_type === "Simple" ||
-              form.interest_type === "Compound") && (
-              <>
-                <div className="form-field">
-                  <label>Interest Rate (%) *</label>
-                  <input
-                    type="number"
-                    step="any"
-                    placeholder="e.g. 5"
-                    className="form-input"
-                    value={form.interest_rate}
-                    onChange={(e) =>
-                      setForm({ ...form, interest_rate: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-                <div className="form-field">
-                  <label>Rate Period</label>
-                  <select
-                    className="form-input"
-                    value={form.rate_period}
-                    onChange={(e) =>
-                      setForm({ ...form, rate_period: e.target.value })
-                    }
-                  >
-                    <option value="daily">Daily</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                    <option value="yearly">Yearly</option>
-                  </select>
-                </div>
-              </>
-            )}
-
-            {form.interest_type === "Compound" && (
-              <div className="form-field">
-                <label>Compounding Frequency *</label>
-                <select
-                  className="form-input"
-                  value={form.compounding_frequency}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      compounding_frequency: e.target.value,
-                    })
-                  }
-                  required
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                  <option value="yearly">Yearly</option>
-                </select>
-              </div>
-            )}
-
-            {form.interest_type === "Manual" && (
-              <div className="form-field">
-                <label>Manual Interest Amount (₹) *</label>
-                <input
-                  type="number"
-                  step="any"
-                  placeholder="e.g. 500"
-                  className="form-input"
-                  value={form.manual_interest_amount}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      manual_interest_amount: e.target.value,
-                    })
-                  }
-                  required
-                />
-              </div>
-            )}
-
             <div className="form-field">
-              <label>Repayment Schedule Type</label>
-              <select
+              <label>Number of Installments *</label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                placeholder="e.g. 10"
                 className="form-input"
-                value={form.repayment_schedule_type}
+                value={form.number_of_installments}
                 onChange={(e) =>
-                  setForm({
-                    ...form,
-                    repayment_schedule_type: e.target.value,
-                  })
+                  setForm({ ...form, number_of_installments: e.target.value })
                 }
-              >
-                <option value="one_time">One time (Bullet payment)</option>
-                <option value="monthly">Monthly installments</option>
-                <option value="weekly">Weekly installments</option>
-                <option value="daily">Daily installments</option>
-              </select>
+                required
+              />
             </div>
 
             <div className="form-field full-width">
@@ -734,12 +633,11 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                 <th>Principal</th>
                 <th>Borrowed Date</th>
                 <th>Due Date</th>
-                <th>Interest Type</th>
+                <th>Interest</th>
                 <th>Status</th>
                 <th>Total Paid</th>
                 <th>Remaining Balance</th>
-                <th>Next Due Date</th>
-                <th>Next Amount</th>
+                <th>Suggested Next Payment</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -765,9 +663,9 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                         {expanded ? "▼" : "▶"}
                       </td>
                       <td className="cell-lender">
-                        <strong>{row.lender_name}</strong>
+                        <strong>{row.lender?.name || row.lender_name || "—"}</strong>
                       </td>
-                      <td>{row.lender_phone || "—"}</td>
+                      <td>{row.lender?.phone || row.lender_phone || "—"}</td>
                       <td className="cell-num">
                         {formatMoney(row.principal_amount, row.currency)}
                       </td>
@@ -806,10 +704,9 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                       <td className="cell-num text-bold">
                         {formatMoney(row.remaining_balance, row.currency)}
                       </td>
-                      <td>{row.next_due_date || "—"}</td>
                       <td className="cell-num">
                         {row.remaining_balance > 0
-                          ? formatMoney(row.next_installment_amount, row.currency)
+                          ? formatMoney(row.suggested_next_payment, row.currency)
                           : "—"}
                       </td>
                       <td className="row-actions" onClick={(e) => e.stopPropagation()}>
@@ -820,7 +717,7 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                           onClick={() => {
                             setPaymentBorrow(row);
                             setPaymentForm({
-                              amount_paid: row.remaining_balance > 0 ? String(row.next_installment_amount || row.remaining_balance) : "",
+                              amount_paid: row.remaining_balance > 0 ? String(row.suggested_next_payment || row.remaining_balance) : "",
                               payment_date: new Date().toISOString().slice(0, 10),
                               notes: "",
                             });
@@ -879,25 +776,35 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
 
                             {/* Interest & Balance Breakdown */}
                             <div className="detail-section">
-                              <h4>Interest & Financial Breakdown</h4>
+                              <h4>Loan & Financial Breakdown</h4>
                               <div className="detail-kv">
                                 <span className="detail-label">Principal:</span>
                                 <span className="detail-val">{formatMoney(row.principal_amount, row.currency)}</span>
                               </div>
                               <div className="detail-kv">
-                                <span className="detail-label">Interest Formula:</span>
+                                <span className="detail-label">Interest Rate:</span>
                                 <span className="detail-val">{formatInterestInfo(row)}</span>
                               </div>
                               <div className="detail-kv">
-                                <span className="detail-label">Accrued Interest:</span>
-                                <span className="detail-val text-warn">
-                                  {formatMoney(row.accrued_interest, row.currency)}
+                                <span className="detail-label">Installments:</span>
+                                <span className="detail-val">{row.number_of_installments || "—"}</span>
+                              </div>
+                              <div className="detail-kv">
+                                <span className="detail-label">Fixed Principal Installment:</span>
+                                <span className="detail-val text-bold">
+                                  {formatMoney(row.fixed_principal_installment, row.currency)}
                                 </span>
                               </div>
                               <div className="detail-kv">
-                                <span className="detail-label">Total Payable to Date:</span>
-                                <span className="detail-val text-bold">
-                                  {formatMoney(row.total_payable_to_date, row.currency)}
+                                <span className="detail-label">Total Principal Paid:</span>
+                                <span className="detail-val text-good">
+                                  {formatMoney(row.total_principal_paid, row.currency)}
+                                </span>
+                              </div>
+                              <div className="detail-kv">
+                                <span className="detail-label">Total Interest Paid:</span>
+                                <span className="detail-val text-warn">
+                                  {formatMoney(row.total_interest_paid, row.currency)}
                                 </span>
                               </div>
                               <div className="detail-kv">
@@ -912,14 +819,12 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                                   {formatMoney(row.remaining_balance, row.currency)}
                                 </span>
                               </div>
-                              {overpaid && (
-                                <div className="detail-kv">
-                                  <span className="detail-label">Overpaid Amount:</span>
-                                  <span className="detail-val text-good">
-                                    {formatMoney(row.overpaid_by, row.currency)}
-                                  </span>
-                                </div>
-                              )}
+                              <div className="detail-kv">
+                                <span className="detail-label">Suggested Next Payment:</span>
+                                <span className="detail-val text-bold">
+                                  {formatMoney(row.suggested_next_payment, row.currency)}
+                                </span>
+                              </div>
                             </div>
 
                             {/* Payment History Mini Ledger */}
@@ -946,7 +851,10 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                                     <tr>
                                       <th>Payment Date</th>
                                       <th>Amount Paid</th>
-                                      <th>Notes / Method</th>
+                                      <th>Interest</th>
+                                      <th>Principal</th>
+                                      <th>Remaining Principal</th>
+                                      <th>Notes</th>
                                       <th style={{ width: "50px" }}>Action</th>
                                     </tr>
                                   </thead>
@@ -957,7 +865,21 @@ export default function BorrowPortal({ api, PortalLayout, userMobile, onLogout }
                                         <td className="cell-num text-good">
                                           {formatMoney(p.amount_paid, row.currency)}
                                         </td>
-                                        <td>{p.notes || "—"}</td>
+                                        <td className="cell-num text-warn">
+                                          {formatMoney(p.interest_component, row.currency)}
+                                        </td>
+                                        <td className="cell-num text-good">
+                                          {formatMoney(p.principal_component, row.currency)}
+                                        </td>
+                                        <td className="cell-num text-bold">
+                                          {formatMoney(p.remaining_principal_after, row.currency)}
+                                        </td>
+                                        <td>
+                                          {p.notes || "—"}
+                                          {p.interest_shortfall && (
+                                            <span className="overdue-warning-pill" style={{ marginLeft: "6px" }}>Shortfall</span>
+                                          )}
+                                        </td>
                                         <td>
                                           <button
                                             type="button"

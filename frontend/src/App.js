@@ -118,8 +118,7 @@ function AuthPage({ api, onLogin }) {
     <div className="auth-wrapper">
       <div className="auth-card">
         <div className="auth-header">
-          <div className="auth-logo-icon">💰</div>
-          <h1 className="auth-title">Finance Manager</h1>
+          <h1 className="auth-title">Loan Manager</h1>
           <p className="auth-subtitle">
             {isSignUp
               ? "Register with Mobile Number & Password"
@@ -185,8 +184,8 @@ function AuthPage({ api, onLogin }) {
             {loading
               ? "Processing..."
               : isSignUp
-              ? "Create Account"
-              : "Sign In"}
+                ? "Create Account"
+                : "Sign In"}
           </button>
         </form>
       </div>
@@ -201,28 +200,25 @@ export function PortalLayout({ userMobile, activeTab, onLogout, children }) {
     <div className="portal-container">
       <header className="portal-header">
         <div className="header-brand">
-          <span className="brand-logo">💸</span>
           <div>
-            <h1 className="brand-title">Finance Manager</h1>
-            <span className="user-badge">📱 {userMobile || "User"}</span>
+            <h1 className="brand-title">Loan Manager</h1>
+            <span className="user-badge"> {userMobile || "User"}</span>
           </div>
         </div>
 
         <nav className="portal-nav">
           <button
             type="button"
-            className={`nav-tab nav-tab--borrow ${
-              activeTab === "borrow" ? "active" : ""
-            }`}
+            className={`nav-tab nav-tab--borrow ${activeTab === "borrow" ? "active" : ""
+              }`}
             onClick={() => navigate("/borrow")}
           >
             ↓ Borrow Portal
           </button>
           <button
             type="button"
-            className={`nav-tab nav-tab--lend ${
-              activeTab === "lend" ? "active" : ""
-            }`}
+            className={`nav-tab nav-tab--lend ${activeTab === "lend" ? "active" : ""
+              }`}
             onClick={() => navigate("/lend")}
           >
             ↑ Lend Portal
@@ -506,9 +502,8 @@ function RecordPortal({ api, type, title, subtitle, totalLabel, userMobile, onLo
                   )}
                 </div>
                 <span
-                  className={`status-pill ${
-                    isPending ? "pill-pending" : "pill-returned"
-                  }`}
+                  className={`status-pill ${isPending ? "pill-pending" : "pill-returned"
+                    }`}
                   onClick={() => handleToggleStatus(record)}
                   title="Click to toggle status"
                 >

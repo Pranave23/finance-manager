@@ -9,7 +9,7 @@ test('renders login page title', () => {
       <App />
     </MemoryRouter>
   );
-  const titleElement = screen.getByText(/Finance Manager/i);
+  const titleElement = screen.getByText(/Loan Manager/i);
   expect(titleElement).toBeInTheDocument();
 });
 
